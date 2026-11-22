@@ -341,10 +341,8 @@ def banner_html(result):
 # 4. LOAD TRAINED MODEL
 # ==========================================================
 
-@st.cache_resource
 def load_model():
     return joblib.load(MODEL_PATH)
-
 
 try:
     model = load_model()
