@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import joblib
@@ -16,24 +17,13 @@ st.set_page_config(
 )
 
 REFERENCE_YEAR = 2026
-
 BASE_DIR = Path(__file__).parent
+MODEL_PATH = BASE_DIR / "best_optimized_used_car_price_model.joblib"
 
-MODEL_PATH = BASE_DIR / "best_used_car_price_model.joblib"
 
 # ==========================================================
-# 2. DESIGN (STYLES ONLY - NO LOGIC)
+# 2. DESIGN
 # ==========================================================
-# Palette
-#   Midnight  #050A14  page background
-#   Navy      #0B1220  window surface
-#   Blue      #3B82F6  accent, buttons, highlights
-#   Sky       #60A5FA  eyebrow text, active tab
-#   Mist      #A9B8CC  secondary text
-# Type: Oswald (headlines, prices) + Inter (everything else)
-#
-# Optional: save a car photo as hero.jpg (or .png / .webp) next to
-# app.py and it replaces the illustrated car in the banner.
 
 CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap');
@@ -42,7 +32,6 @@ html, body, [class*="css"], .stApp, button, input, select, textarea {
     font-family: 'Inter', 'Segoe UI', sans-serif !important;
 }
 
-/* ---------- Shell ---------- */
 .stApp {
     background:
         radial-gradient(ellipse at 85% 0%, #0d2a5c 0%, transparent 55%),
@@ -61,7 +50,6 @@ header[data-testid="stHeader"] { display: none; }
 }
 p, li { color: #A9B8CC; }
 
-/* ---------- Left column ---------- */
 .eyebrow {
     color: #60A5FA; font-weight: 500; font-size: 0.85rem;
     letter-spacing: 0.28em; margin-bottom: 1.1rem;
@@ -93,7 +81,6 @@ p, li { color: #A9B8CC; }
 }
 .cta svg { width: 22px; height: 22px; }
 
-/* ---------- Window (right column) ---------- */
 [data-testid="stColumn"]:has(.window-marker),
 [data-testid="column"]:has(.window-marker) {
     background: #0b1220;
@@ -114,7 +101,6 @@ p, li { color: #A9B8CC; }
 .pill-off { background: #4a1c1c; color: #FF9A9A; }
 .pill i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
 
-/* Tabs */
 [data-baseweb="tab-list"] { gap: 1.6rem; border-bottom: 1px solid #1c2a42; }
 [data-baseweb="tab"] { background: transparent !important; padding: 0.6rem 0.2rem !important; }
 [data-baseweb="tab"] p { color: #A9B8CC; font-weight: 500; font-size: 0.95rem; }
@@ -122,7 +108,6 @@ p, li { color: #A9B8CC; }
 [data-baseweb="tab-highlight"] { background-color: #3B82F6 !important; }
 [data-baseweb="tab-border"] { display: none; }
 
-/* ---------- Banner ---------- */
 .banner {
     position: relative; height: 330px; border-radius: 14px; overflow: hidden;
     margin: 0.8rem 0 1.2rem 0; border: 1px solid #1c2a42;
@@ -155,7 +140,6 @@ p, li { color: #A9B8CC; }
 .ov-big.muted { color: #6B7C93; font-size: 1.3rem; font-weight: 600; }
 .ov-div { width: 1px; align-self: stretch; background: #3a4a63; }
 
-/* ---------- Form ---------- */
 [data-testid="stForm"] { background: transparent; border: none; padding: 0; }
 [data-testid="stWidgetLabel"] p { color: #A9B8CC !important; font-weight: 600 !important; font-size: 0.82rem !important; }
 [data-baseweb="select"] > div,
@@ -202,7 +186,7 @@ st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
 # ==========================================================
 
 def indian_format(number):
-    """Format a number with Indian digit grouping, e.g. 2363930 -> 23,63,930."""
+    """Format a number using Indian digit grouping."""
 
     number = int(round(number))
     sign = "-" if number < 0 else ""
@@ -283,10 +267,12 @@ ICON_FORM = (
     '<path d="M4 6h8M18 6h2M4 12h2M12 12h8M4 18h10M20 18h0"/>'
     '<circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>'
 )
+
 ICON_CHART = (
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" '
     'stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V11M11 20V4M17 20v-6M3 20h18"/></svg>'
 )
+
 ICON_CHECK = (
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
     'stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>'
@@ -323,14 +309,18 @@ def banner_html(result):
             '<div class="ov-card">'
             '<i class="h tl"></i><i class="h tr"></i><i class="h bl"></i><i class="h br"></i>'
             '<div class="ov-k">ESTIMATED VALUE</div>'
-            f'<div class="ov-v">₹{result["prediction"]:,.2f} Lakh</div>'
+            f'<div class="ov-v">₹{indian_format(result["prediction"])}</div>'
             '</div>'
         )
 
-        left = f'<div class="ov-small">YOUR VEHICLE</div><div class="ov-big">{str(result["car_name"]).upper()}</div>'
+        left = (
+            '<div class="ov-small">YOUR VEHICLE</div>'
+            f'<div class="ov-big">{str(result["car_name"]).upper()}</div>'
+        )
+
         right = (
-            '<div class="ov-small">PREDICTED PRICE</div>'
-            f'<div class="ov-big">₹ {indian_format(result["rupees_value"])}</div>'
+            '<div class="ov-small">PREDICTED PRICE (INR)</div>'
+            f'<div class="ov-big">₹ {indian_format(result["prediction"])}</div>'
         )
 
     else:
@@ -368,36 +358,46 @@ except Exception as error:
 
 
 # ==========================================================
-# 5. EXTRACT CAR NAMES
+# 5. EXTRACT MODEL CATEGORIES
 # ==========================================================
 
-def get_car_names(trained_model):
+def get_model_categories(trained_model):
+    """
+    Extract categories from the fitted OneHotEncoder
+    inside the trained model's ColumnTransformer.
+    """
 
-    try:
+    if not hasattr(trained_model, "named_steps"):
+        raise TypeError("The loaded model is not a Scikit-learn Pipeline.")
 
-        preprocessing = trained_model.named_steps["preprocessing"]
+    if "preprocessor" not in trained_model.named_steps:
+        raise KeyError("The model does not contain a 'preprocessor' step.")
 
-        categorical = (
-            preprocessing.named_transformers_["categorical"]
-        )
+    preprocessor = trained_model.named_steps["preprocessor"]
 
-        encoder = categorical.named_steps["onehot"]
+    if not hasattr(preprocessor, "named_transformers_"):
+        raise RuntimeError("The model preprocessor has not been fitted.")
 
-        return sorted(
-            encoder.categories_[0].tolist()
-        )
+    encoder = preprocessor.named_transformers_["categorical"]
 
-    except Exception:
+    if encoder is None or not hasattr(encoder, "categories_"):
+        raise RuntimeError("The fitted categorical encoder was not found.")
 
-        return [
-            "ciaz",
-            "city",
-            "corolla altis",
-            "fortuner",
-            "innova",
-            "swift",
-            "verna"
-        ]
+    feature_names = [
+        "Car_Name",
+        "Fuel_Type",
+        "Seller_Type",
+        "Transmission",
+        "Owner"
+    ]
+
+    if len(feature_names) != len(encoder.categories_):
+        raise RuntimeError("The encoder categories do not match the expected features.")
+
+    return {
+        feature: sorted(values.tolist())
+        for feature, values in zip(feature_names, encoder.categories_)
+    }
 
 
 # ==========================================================
@@ -414,6 +414,7 @@ if "prediction_result" not in st.session_state:
 
 left_col, right_col = st.columns([1, 1.45], gap="large")
 
+
 # ----------------------------------------------------------
 # LEFT: INTRODUCTION
 # ----------------------------------------------------------
@@ -426,11 +427,12 @@ with left_col:
         '<div class="lead">Enter a used vehicle\'s details and get an estimated resale '
         'price in seconds, right on the page.</div>'
         + feature(ICON_FORM, "Enter the details", "Model, year, mileage, fuel type and ownership.")
-        + feature(ICON_CHART, "Machine-learning estimate", "Gradient Boosting trained on the CarDekho dataset.")
-        + feature(ICON_CHECK, "A price you can read", "Shown in lakhs and in full rupees.")
+        + feature(ICON_CHART, "Machine-learning estimate", "Optimized Random Forest trained on combined vehicle datasets.")
+        + feature(ICON_CHECK, "A price you can read", "Displayed in Indian Rupees.")
         + f'<div class="cta">{ICON_CHECK}Instant estimate, no sign-up</div>',
         unsafe_allow_html=True
     )
+
 
 # ----------------------------------------------------------
 # RIGHT: APP WINDOW
@@ -457,6 +459,7 @@ with right_col:
         ["Predict", "Results", "About"]
     )
 
+
     # ======================================================
     # TAB 1: PREDICT
     # ======================================================
@@ -467,204 +470,173 @@ with right_col:
 
         if not model_loaded:
 
-            banner_slot.markdown(banner_html(None), unsafe_allow_html=True)
-
-            st.error(
-                "The trained machine learning model "
-                "could not be loaded."
+            banner_slot.markdown(
+                banner_html(None),
+                unsafe_allow_html=True
             )
 
+            st.error("The trained machine learning model could not be loaded.")
             st.code(model_error)
 
             st.warning(
-                "Make sure best_used_car_price_model.joblib "
+                "Make sure best_optimized_used_car_price_model.joblib "
                 "is located in the same directory as app.py."
             )
 
         else:
 
-            car_names = get_car_names(model)
+            try:
+                categories = get_model_categories(model)
 
-            # ==============================================
-            # VEHICLE INPUT FORM
-            # ==============================================
+                car_names = categories["Car_Name"]
+                fuel_options = categories["Fuel_Type"]
+                seller_options = categories["Seller_Type"]
+                transmission_options = categories["Transmission"]
+                owner_options = categories["Owner"]
 
-            with st.form("vehicle_prediction_form"):
+            except Exception as error:
 
-                col1, col2 = st.columns(2, gap="large")
+                st.error("Unable to read the categories from the trained model.")
+                st.exception(error)
 
-                with col1:
+                car_names = []
+                fuel_options = []
+                seller_options = []
+                transmission_options = []
+                owner_options = []
 
-                    car_name = st.selectbox(
-                        "Vehicle Model",
-                        options=car_names
+            if car_names and fuel_options and seller_options and transmission_options and owner_options:
+
+                with st.form("vehicle_prediction_form"):
+
+                    col1, col2 = st.columns(2, gap="large")
+
+                    with col1:
+
+                        car_name = st.selectbox(
+                            "Vehicle Model",
+                            options=car_names
+                        )
+
+                        kms_driven = st.number_input(
+                            "Total Kilometres Driven",
+                            min_value=0,
+                            max_value=1000000,
+                            value=50000,
+                            step=1000
+                        )
+
+                        fuel_type = st.selectbox(
+                            "Fuel Type",
+                            options=fuel_options
+                        )
+
+                    with col2:
+
+                        seller_type = st.selectbox(
+                            "Seller Type",
+                            options=seller_options
+                        )
+
+                        transmission = st.selectbox(
+                            "Transmission",
+                            options=transmission_options
+                        )
+
+                        # IMPORTANT:
+                        # The trained model expects owner names as text,
+                        # not numerical owner codes.
+                        owner = st.selectbox(
+                            "Previous Owners",
+                            options=owner_options
+                        )
+
+                        vehicle_year = st.number_input(
+                            "Manufacturing Year",
+                            min_value=2000,
+                            max_value=REFERENCE_YEAR,
+                            value=2018,
+                            step=1
+                        )
+
+                    submitted = st.form_submit_button(
+                        "Estimate price",
+                        use_container_width=True,
+                        type="primary"
                     )
 
-                    present_price = st.number_input(
-                        "Current Showroom Price (₹ Lakh)",
-                        min_value=0.1,
-                        max_value=1000.0,
-                        value=5.0,
-                        step=0.1
-                    )
+                # ==========================================
+                # PROCESS PREDICTION
+                # ==========================================
 
-                    kms_driven = st.number_input(
-                        "Total Kilometres Driven",
-                        min_value=0,
-                        max_value=1000000,
-                        value=50000,
-                        step=1000
-                    )
+                if submitted:
 
-                    fuel_type = st.selectbox(
-                        "Fuel Type",
-                        [
-                            "Petrol",
-                            "Diesel",
-                            "CNG"
-                        ]
-                    )
+                    vehicle_age = REFERENCE_YEAR - int(vehicle_year)
 
-                with col2:
+                    input_data = pd.DataFrame([{
+                        "Car_Name": car_name,
+                        "Kms_Driven": int(kms_driven),
+                        "Fuel_Type": fuel_type,
+                        "Seller_Type": seller_type,
+                        "Transmission": transmission,
+                        "Owner": owner,
+                        "Vehicle_Age": int(vehicle_age)
+                    }])
 
-                    seller_type = st.selectbox(
-                        "Seller Type",
-                        [
-                            "Dealer",
-                            "Individual",
-                            "Trustmark Dealer"
-                        ]
-                    )
+                    try:
 
-                    transmission = st.selectbox(
-                        "Transmission",
-                        [
-                            "Manual",
-                            "Automatic"
-                        ]
-                    )
+                        prediction = float(model.predict(input_data)[0])
 
-                    owner = st.selectbox(
-                        "Previous Owners",
-                        [0, 1, 2, 3]
-                    )
+                        if not pd.notna(prediction):
+                            raise ValueError("The model returned an invalid prediction.")
 
-                    vehicle_year = st.number_input(
-                        "Manufacturing Year",
-                        min_value=2000,
-                        max_value=REFERENCE_YEAR,
-                        value=2018,
-                        step=1
-                    )
+                        st.session_state.prediction_result = {
+                            "prediction": prediction,
+                            "car_name": car_name,
+                            "kms_driven": int(kms_driven),
+                            "fuel_type": fuel_type,
+                            "seller_type": seller_type,
+                            "transmission": transmission,
+                            "owner": owner,
+                            "vehicle_age": vehicle_age,
+                            "vehicle_year": int(vehicle_year)
+                        }
 
-                submitted = st.form_submit_button(
-                    "Estimate price",
-                    use_container_width=True,
-                    type="primary"
+                    except Exception as error:
+
+                        st.session_state.prediction_result = None
+
+                        st.error("Unable to generate the prediction.")
+                        st.exception(error)
+
+                # ==========================================
+                # DISPLAY PREDICTION RESULT
+                # ==========================================
+
+                result = st.session_state.prediction_result
+
+                banner_slot.markdown(
+                    banner_html(result),
+                    unsafe_allow_html=True
                 )
 
-            # ==============================================
-            # PROCESS PREDICTION
-            # ==============================================
+                if result is not None:
 
-            if submitted:
-
-                vehicle_age = (
-                    REFERENCE_YEAR - int(vehicle_year)
-                )
-
-                input_data = pd.DataFrame([{
-
-                    "Car_Name": car_name,
-
-                    "Present_Price": float(
-                        present_price
-                    ),
-
-                    "Kms_Driven": int(
-                        kms_driven
-                    ),
-
-                    "Fuel_Type": fuel_type,
-
-                    "Seller_Type": seller_type,
-
-                    "Transmission": transmission,
-
-                    "Owner": int(owner),
-
-                    "Vehicle_Age": int(vehicle_age)
-
-                }])
-
-                try:
-
-                    prediction = float(
-                        model.predict(input_data)[0]
+                    st.caption(
+                        "This is an estimate from a trained model. Actual selling "
+                        "prices vary with vehicle condition, location and market demand."
                     )
 
-                    rupees_value = prediction * 100000
+                    if st.button("Clear prediction", use_container_width=True):
+                        st.session_state.prediction_result = None
+                        st.rerun()
 
-                    st.session_state.prediction_result = {
-
-                        "prediction": prediction,
-
-                        "rupees_value": rupees_value,
-
-                        "car_name": car_name,
-
-                        "present_price": present_price,
-
-                        "kms_driven": kms_driven,
-
-                        "fuel_type": fuel_type,
-
-                        "seller_type": seller_type,
-
-                        "transmission": transmission,
-
-                        "owner": owner,
-
-                        "vehicle_age": vehicle_age
-
-                    }
-
-                except Exception as error:
-
-                    st.session_state.prediction_result = None
-
-                    st.error(
-                        "Unable to generate the prediction."
-                    )
-
-                    st.code(str(error))
-
-            # ==============================================
-            # DISPLAY PREDICTION RESULT (ON THE BANNER)
-            # ==============================================
-
-            result = st.session_state.prediction_result
-
-            banner_slot.markdown(
-                banner_html(result),
-                unsafe_allow_html=True
-            )
-
-            if result is not None:
-
-                st.caption(
-                    "This is an estimate from a trained model. Actual selling "
-                    "prices vary with vehicle condition, location and market demand."
+            else:
+                st.error(
+                    "The vehicle selection categories could not be loaded. "
+                    "Check the model file and its preprocessing pipeline."
                 )
 
-                if st.button(
-                    "Clear prediction",
-                    use_container_width=True
-                ):
-
-                    st.session_state.prediction_result = None
-
-                    st.rerun()
 
     # ======================================================
     # TAB 2: RESULTS
@@ -689,36 +661,25 @@ with right_col:
             summary = pd.DataFrame({
 
                 "Vehicle Specification": [
-
                     "Vehicle Model",
-                    "Present Price",
+                    "Manufacturing Year",
                     "Kilometres Driven",
                     "Fuel Type",
                     "Seller Type",
                     "Transmission",
                     "Previous Owners",
                     "Vehicle Age"
-
                 ],
 
                 "Entered Value": [
-
                     result["car_name"],
-
-                    f"₹{result['present_price']:,.2f} Lakh",
-
+                    str(result["vehicle_year"]),
                     f"{result['kms_driven']:,} km",
-
                     result["fuel_type"],
-
                     result["seller_type"],
-
                     result["transmission"],
-
-                    str(result["owner"]),
-
+                    result["owner"],
                     f"{result['vehicle_age']} years"
-
                 ]
 
             })
@@ -729,21 +690,11 @@ with right_col:
                 hide_index=True
             )
 
-            price_col1, price_col2 = st.columns(2)
+            st.metric(
+                "Predicted Selling Price",
+                f"₹{indian_format(result['prediction'])}"
+            )
 
-            with price_col1:
-
-                st.metric(
-                    "Predicted price",
-                    f"₹{result['prediction']:,.2f} Lakh"
-                )
-
-            with price_col2:
-
-                st.metric(
-                    "Equivalent INR",
-                    f"₹{indian_format(result['rupees_value'])}"
-                )
 
     # ======================================================
     # TAB 3: ABOUT
@@ -757,9 +708,9 @@ with right_col:
         )
 
         st.write(
-            "This project applies machine learning regression techniques "
-            "to predict the selling prices of used vehicles using the "
-            "CarDekho Vehicle Dataset."
+            "This project combines the Car Details from CarDekho dataset "
+            "and the CarDekho vehicle dataset to develop a machine-learning "
+            "system for predicting used vehicle selling prices."
         )
 
         st.write(
@@ -772,14 +723,23 @@ with right_col:
         )
 
         st.write(
-            "**Selected model:** Gradient Boosting Regressor, chosen for "
-            "the lowest Mean Absolute Error. Trained on 239 records and "
-            "tested on 60."
+            "**Selected model:** Optimized Random Forest Regressor, "
+            "selected based on its lowest Mean Absolute Error."
+        )
+
+        st.write(
+            "**Dataset:** 3,875 vehicle records; 3,100 training records "
+            "and 775 testing records."
         )
 
         st.write(
             "**Built with:** Python, Pandas, Scikit-learn, Joblib and Streamlit."
         )
+
+
+# ==========================================================
+# 8. FOOTER
+# ==========================================================
 
 st.markdown(
     '<div class="footer">AutoPredict | Academic Machine Learning Project</div>',
